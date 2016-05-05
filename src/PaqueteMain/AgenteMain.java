@@ -6,6 +6,10 @@ package PaqueteMain;
 
 import JPGCompare.utils.*;
 import MazeMatriz.*;
+import static MazeMatriz.Direcciones.ABAJO;
+import static MazeMatriz.Direcciones.ARRIBA;
+import static MazeMatriz.Direcciones.DERECHA;
+import static MazeMatriz.Direcciones.IZQUIERDA;
 import MazeTree.*;
 import jade.core.*;
 import jade.core.behaviours.*;
@@ -23,11 +27,13 @@ public class AgenteMain extends Agent {
     public Hoja arbol = new Hoja(Direcciones.ABAJO);
     LinkedList<Hoja> cola = new LinkedList<>();
     String[] pasos = null;
-
+    Boolean regresando = false;
+    Boolean marcando = false;
+    Boolean saliendo = false;
     @Override
     public void setup() {
         System.out.println("Main iniciado");
-
+        
         ACLMessage msginicio = blockingReceive();
         if (msginicio != null && "iniciar".equals(msginicio.getContent())) {
             addBehaviour(new TickerBehaviour(this, 2000) {
@@ -37,8 +43,8 @@ public class AgenteMain extends Agent {
                     Direcciones orientacion = matriz.getOrientacion();
                     String paraenviar2 = "";
                     Boolean parar = false;
-
-                    System.out.println("empiezaTick...");
+                    
+                    System.out.println('\n'+"empiezaTick...");
                     if (!explorar(orientacion)) {
                         System.out.println("voy a explorar");
                         switch (orientacion) {
@@ -56,14 +62,145 @@ public class AgenteMain extends Agent {
                                 break;
                         }
                     }
+                    //if encontre al robot
+                    //saliendo = true
+                    //else
                     String paraenviar = getDatosMatriz();
-                    if (arbol.hayHijos()) {
+                    if(saliendo){
+                        if (arbol.getpadre() == null) {
+                            //if (arbol.hayHijos()) {
+                                //arbol = arbol.getSiguiente();
+                                hacia = arbol.getProcedencia();
+                                System.out.println("voy a salir por " + hacia);
+                                matriz.Avanzar(hacia);
+                                paraenviar2 = "" + hacia;
+                            //} else {
+                                //error
+                            //}
+                        } else {
+                            switch (arbol.getProcedencia()) {
+                                case ARRIBA:
+                                    hacia = Direcciones.ABAJO;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case IZQUIERDA:
+                                    hacia = Direcciones.DERECHA;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case DERECHA:
+                                    hacia = Direcciones.IZQUIERDA;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case ABAJO:
+                                    if (arbol.getpadre() != null) {
+                                        hacia = Direcciones.ARRIBA;
+                                        System.out.println("me regreso por" + hacia);
+                                        matriz.Avanzar(hacia);
+                                        paraenviar2 = "" + hacia;
+                                    }
+                                    break;
+                            }
+                            //avisarle a aquellos
+                            arbol=arbol.getpadre();
+                        }
+                    }else if (arbol.hayHijos() && marcando == false && regresando == false) {
                         arbol = arbol.getSiguiente();
                         hacia = arbol.getProcedencia();
                         System.out.println("me voy a ir por el hijo " + hacia);
                         matriz.Avanzar(hacia);
                         paraenviar2 = "" + hacia;
-                    } else {
+                    } else if (arbol.hayHijos() && marcando == true) {
+                        if (arbol.getpadre() == null) {
+                            arbol = arbol.getSiguiente();
+                            hacia = arbol.getProcedencia();
+                            System.out.println("me voy a ir por el hijo " + hacia);
+                            matriz.Avanzar(hacia);
+                            paraenviar2 = "" + hacia;
+                            marcando = false;
+                        } else {
+                            switch (arbol.getProcedencia()) {
+                                case ARRIBA:
+                                    hacia = Direcciones.ABAJO;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case IZQUIERDA:
+                                    hacia = Direcciones.DERECHA;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case DERECHA:
+                                    hacia = Direcciones.IZQUIERDA;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case ABAJO:
+                                    if (arbol.getpadre() != null) {
+                                        hacia = Direcciones.ARRIBA;
+                                        System.out.println("me regreso por" + hacia);
+                                        matriz.Avanzar(hacia);
+                                        paraenviar2 = "" + hacia;
+                                    }
+                                    break;
+                            }
+                            arbol = arbol.getpadre();
+                            marcando = false;
+                            regresando = true;
+                        }
+                    } else if (regresando == true) {
+                        if (arbol.getpadre() == null) {
+                            regresando = false;
+                            if (arbol.hayHijos()) {
+                                arbol = arbol.getSiguiente();
+                                hacia = arbol.getProcedencia();
+                                System.out.println("me voy a ir por el hijo " + hacia);
+                                matriz.Avanzar(hacia);
+                                paraenviar2 = "" + hacia;
+                            } else {
+                                //error
+                            }
+                        } else {
+                            switch (arbol.getProcedencia()) {
+                                case ARRIBA:
+                                    hacia = Direcciones.ABAJO;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case IZQUIERDA:
+                                    hacia = Direcciones.DERECHA;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case DERECHA:
+                                    hacia = Direcciones.IZQUIERDA;
+                                    System.out.println("me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
+                                    break;
+                                case ABAJO:
+                                    if (arbol.getpadre() != null) {
+                                        hacia = Direcciones.ARRIBA;
+                                        System.out.println("me regreso por" + hacia);
+                                        matriz.Avanzar(hacia);
+                                        paraenviar2 = "" + hacia;
+                                    }
+                                    break;
+                            }
+                            arbol=arbol.getpadre();
+                        }
+                    } else if (regresando == false) {
+                        marcando = true;
                         arbol.setVisitado(true);
                         switch (arbol.getProcedencia()) {
                             case ARRIBA:
@@ -85,21 +222,23 @@ public class AgenteMain extends Agent {
                                 paraenviar2 = "" + hacia;
                                 break;
                             case ABAJO:
-                                if(arbol.getpadre()!=null){
-                                hacia = Direcciones.ARRIBA;
-                                System.out.println("no hay hijos, me regreso por" + hacia);
-                                matriz.Avanzar(hacia);
-                                paraenviar2 = "" + hacia;
+                                if (arbol.getpadre() != null) {
+                                    hacia = Direcciones.ARRIBA;
+                                    System.out.println("no hay hijos, me regreso por" + hacia);
+                                    matriz.Avanzar(hacia);
+                                    paraenviar2 = "" + hacia;
                                 }
                                 break;
                         }
                         if (arbol.getpadre() == null) {
-                            System.out.println("era la raiz, fin");
+                            System.out.println("era la raiz, No encontre  al otro robot, fin");
                             parar = true;
                             stop();
                         } else {
                             arbol = arbol.getpadre();
                         }
+                    } else {
+                        //error
                     }
                     if (!parar) {
                         enviarMsg("receptor", paraenviar + "," + paraenviar2);
@@ -136,25 +275,26 @@ public class AgenteMain extends Agent {
                                 System.out.println(orientacion);
                                 if (j < pasos.length) {
                                     System.out.println(pasos[j]);
-                                    avanzar(Direcciones.valueOf(pasos[j]),orientacion);
-                                    enviarMsg("receptor",pasos[j]);
+                                    avanzar(Direcciones.valueOf(pasos[j]), orientacion);
+                                    enviarMsg("receptor", pasos[j]);
                                     matriz.Avanzar(Direcciones.valueOf(pasos[j++]));
                                 } else {
                                     System.out.println("salida");
-                                    if(matriz.isSalida(Direcciones.ARRIBA)){
-                                        avanzar(Direcciones.ARRIBA,orientacion);
-                                    }else if(matriz.isSalida(Direcciones.IZQUIERDA)){
-                                        avanzar(Direcciones.IZQUIERDA,orientacion);
-                                    }else if(matriz.isSalida(Direcciones.DERECHA)){
-                                        avanzar(Direcciones.DERECHA,orientacion);
-                                    }else if(matriz.isSalida(Direcciones.ABAJO)){
-                                        avanzar(Direcciones.ABAJO,orientacion);
+                                    if (matriz.isSalida(Direcciones.ARRIBA)) {
+                                        avanzar(Direcciones.ARRIBA, orientacion);
+                                    } else if (matriz.isSalida(Direcciones.IZQUIERDA)) {
+                                        avanzar(Direcciones.IZQUIERDA, orientacion);
+                                    } else if (matriz.isSalida(Direcciones.DERECHA)) {
+                                        avanzar(Direcciones.DERECHA, orientacion);
+                                    } else if (matriz.isSalida(Direcciones.ABAJO)) {
+                                        avanzar(Direcciones.ABAJO, orientacion);
                                     }
                                     stop();
                                 }
                             }
+
                             @Override
-                            public int onEnd(){
+                            public int onEnd() {
                                 doDelete();
                                 return 0;
                             }
@@ -163,9 +303,9 @@ public class AgenteMain extends Agent {
                     return 0;
                 }
             });
-        }else if(msginicio != null && "inutil".equals(msginicio.getContent())){
+        } else if (msginicio != null && "inutil".equals(msginicio.getContent())) {
             //escuchar
-                //moverse
+            //moverse
             //si llego a salida celebrar
             //sino regresar a escuchar
         }
