@@ -26,14 +26,18 @@ public class AgenteMain extends Agent {
     public Matriz matriz = new Matriz();
     public Hoja arbol = new Hoja(Direcciones.ABAJO);
     LinkedList<Hoja> cola = new LinkedList<>();
+    LinkedList<Direcciones> paraaquelloshacia = new LinkedList<>();
+    LinkedList<Direcciones> paraaquellosdesde = new LinkedList<>();
     String[] pasos = null;
     Boolean regresando = false;
     Boolean marcando = false;
     Boolean saliendo = false;
+    Boolean primeravez = true;
+    
     @Override
     public void setup() {
         System.out.println("Main iniciado");
-        
+
         ACLMessage msginicio = blockingReceive();
         if (msginicio != null && "iniciar".equals(msginicio.getContent())) {
             addBehaviour(new TickerBehaviour(this, 2000) {
@@ -43,8 +47,8 @@ public class AgenteMain extends Agent {
                     Direcciones orientacion = matriz.getOrientacion();
                     String paraenviar2 = "";
                     Boolean parar = false;
-                    
-                    System.out.println('\n'+"empiezaTick...");
+
+                    System.out.println('\n' + "empiezaTick...");
                     if (!explorar(orientacion)) {
                         System.out.println("voy a explorar");
                         switch (orientacion) {
@@ -62,20 +66,62 @@ public class AgenteMain extends Agent {
                                 break;
                         }
                     }
-                    //if encontre al robot
-                    //saliendo = true
-                    //else
+                    if (matriz.hayRobot()) {
+                        saliendo = true;
+                        switch(matriz.dondeRobot()){
+                            case ARRIBA:
+                                paraaquelloshacia.add(ABAJO);
+                                paraaquellosdesde.add(ABAJO);
+                                paraaquellosdesde.add(ABAJO);
+                                break;
+                            case IZQUIERDA:
+                                paraaquelloshacia.add(DERECHA);
+                                paraaquellosdesde.add(DERECHA);
+                                paraaquellosdesde.add(DERECHA);
+                                break;
+                            case DERECHA:
+                                paraaquelloshacia.add(IZQUIERDA);
+                                paraaquellosdesde.add(IZQUIERDA);
+                                paraaquellosdesde.add(IZQUIERDA);
+                                break;
+                            case ABAJO:
+                                paraaquelloshacia.add(ARRIBA);
+                                paraaquellosdesde.add(ARRIBA);
+                                paraaquellosdesde.add(ARRIBA);
+                        }
+                        enviarMsg("receptor","exito");
+                    }
                     String paraenviar = getDatosMatriz();
-                    if(saliendo){
+                    if (saliendo) {
+                        switch(arbol.getProcedencia()){
+                            case ARRIBA:
+                                paraaquelloshacia.add(ABAJO);
+                                break;
+                            case IZQUIERDA:
+                                paraaquelloshacia.add(DERECHA);
+                                break;
+                            case DERECHA:
+                                paraaquelloshacia.add(IZQUIERDA);
+                                break;
+                            case ABAJO:
+                                paraaquelloshacia.add(ARRIBA);
+                        }
+                        if(!primeravez){
+                            paraaquellosdesde.add(orientacion);
+                        }
+                        primeravez = false;
                         if (arbol.getpadre() == null) {
                             //if (arbol.hayHijos()) {
-                                //arbol = arbol.getSiguiente();
-                                hacia = arbol.getProcedencia();
-                                System.out.println("voy a salir por " + hacia);
-                                matriz.Avanzar(hacia);
-                                paraenviar2 = "" + hacia;
+                            //arbol = arbol.getSiguiente();
+                            hacia = arbol.getProcedencia();
+                            System.out.println("voy a salir por " + hacia);
+                            matriz.Avanzar(hacia);
+                            paraenviar2 = "" + hacia;
+                            System.out.println("Salimos fin");
+                            enviarMsg("receptor2","**");
+                            stop();
                             //} else {
-                                //error
+                            //error
                             //}
                         } else {
                             switch (arbol.getProcedencia()) {
@@ -107,9 +153,9 @@ public class AgenteMain extends Agent {
                                     break;
                             }
                             //avisarle a aquellos
-                            arbol=arbol.getpadre();
+                            arbol = arbol.getpadre();
                         }
-                    }else if (arbol.hayHijos() && marcando == false && regresando == false) {
+                    } else if (arbol.hayHijos() && marcando == false && regresando == false) {
                         arbol = arbol.getSiguiente();
                         hacia = arbol.getProcedencia();
                         System.out.println("me voy a ir por el hijo " + hacia);
@@ -123,6 +169,7 @@ public class AgenteMain extends Agent {
                             matriz.Avanzar(hacia);
                             paraenviar2 = "" + hacia;
                             marcando = false;
+                            enviarMsg("receptor","vamos");
                         } else {
                             switch (arbol.getProcedencia()) {
                                 case ARRIBA:
@@ -155,6 +202,7 @@ public class AgenteMain extends Agent {
                             arbol = arbol.getpadre();
                             marcando = false;
                             regresando = true;
+                            enviarMsg("receptor","vamos");
                         }
                     } else if (regresando == true) {
                         if (arbol.getpadre() == null) {
@@ -165,6 +213,7 @@ public class AgenteMain extends Agent {
                                 System.out.println("me voy a ir por el hijo " + hacia);
                                 matriz.Avanzar(hacia);
                                 paraenviar2 = "" + hacia;
+                                enviarMsg("receptor","vamos");
                             } else {
                                 //error
                             }
@@ -197,10 +246,11 @@ public class AgenteMain extends Agent {
                                     }
                                     break;
                             }
-                            arbol=arbol.getpadre();
+                            arbol = arbol.getpadre();
                         }
                     } else if (regresando == false) {
                         marcando = true;
+                        enviarMsg("receptor","fracaso");
                         arbol.setVisitado(true);
                         switch (arbol.getProcedencia()) {
                             case ARRIBA:
@@ -243,6 +293,10 @@ public class AgenteMain extends Agent {
                     if (!parar) {
                         enviarMsg("receptor", paraenviar + "," + paraenviar2);
                         avanzar(hacia, orientacion);
+                        if(!paraaquelloshacia.isEmpty()){
+                            //System.out.println("Camino para salir: "+paraaquelloshacia.pop()+ " orientacion: " + paraaquellosdesde.pop());
+                            decifrar(paraaquelloshacia.pop(),paraaquellosdesde.pop());
+                        } 
                     } else {
                         System.out.println("mapeo listo");
                     }
@@ -304,10 +358,26 @@ public class AgenteMain extends Agent {
                 }
             });
         } else if (msginicio != null && "inutil".equals(msginicio.getContent())) {
-            //escuchar
-            //moverse
-            //si llego a salida celebrar
-            //sino regresar a escuchar
+            addBehaviour(new CyclicBehaviour(){
+                
+                @Override
+                public void onStart(){
+                    System.out.println("AYUDAA!!");
+                }
+                @Override
+                public void action() {
+                    ACLMessage msg = receive();
+                    if(msg!=null){
+                        if("**".equals(msg.getContent())){
+                            System.out.println("Salimos wuju! :D");
+                        }
+                        Moverse(msg.getContent());
+                    }else{
+                        block();
+                    }
+                }
+                
+            });
         }
     }
 
@@ -363,6 +433,9 @@ public class AgenteMain extends Agent {
                     matriz.insertar(dire, TiposCamino.SALIDA);
                     arbol.setSalida(true);
                     break;
+                case PERDIDO:
+                    matriz.insertar(dire, TiposCamino.PERDIDO);
+                    break;
                 default:
                     break;
             }
@@ -405,6 +478,8 @@ public class AgenteMain extends Agent {
             paraenviar += "1";
         } else if (matriz.getTipo(Direcciones.IZQUIERDA) == TiposCamino.SALIDA) {
             paraenviar += "2";
+        } else if (matriz.getTipo(Direcciones.IZQUIERDA) == TiposCamino.PERDIDO) {
+            paraenviar += "3";
         } else if (matriz.getTipo(Direcciones.IZQUIERDA) == TiposCamino.CAMINO) {
             paraenviar += "0";
         }
@@ -413,6 +488,8 @@ public class AgenteMain extends Agent {
             paraenviar += ",1";
         } else if (matriz.getTipo(Direcciones.ARRIBA) == TiposCamino.SALIDA) {
             paraenviar += ",2";
+        } else if (matriz.getTipo(Direcciones.ARRIBA) == TiposCamino.PERDIDO) {
+            paraenviar += ",3";
         } else if (matriz.getTipo(Direcciones.ARRIBA) == TiposCamino.CAMINO) {
             paraenviar += ",0";
         }
@@ -420,6 +497,8 @@ public class AgenteMain extends Agent {
             paraenviar += ",1";
         } else if (matriz.getTipo(Direcciones.DERECHA) == TiposCamino.SALIDA) {
             paraenviar += ",2";
+        } else if (matriz.getTipo(Direcciones.DERECHA) == TiposCamino.PERDIDO) {
+            paraenviar += ",3";
         } else if (matriz.getTipo(Direcciones.DERECHA) == TiposCamino.CAMINO) {
             paraenviar += ",0";
         }
@@ -427,6 +506,8 @@ public class AgenteMain extends Agent {
             paraenviar += ",1";
         } else if (matriz.getTipo(Direcciones.ABAJO) == TiposCamino.SALIDA) {
             paraenviar += ",2";
+        } else if (matriz.getTipo(Direcciones.ABAJO) == TiposCamino.PERDIDO) {
+            paraenviar += ",3";
         } else if (matriz.getTipo(Direcciones.ABAJO) == TiposCamino.CAMINO) {
             paraenviar += ",0";
         }
@@ -450,6 +531,15 @@ public class AgenteMain extends Agent {
             System.out.println("sin respuesta de los motores");
             doDelete();
         }
+    }
+    public void Moverse2(String direccion){
+        enviarMsg("receptor2", direccion);
+        ACLMessage msg = blockingReceive(5000);
+        if (msg == null) {
+            System.out.println("sin respuesta de los motores");
+            doDelete();
+        }
+        //System.out.println("Saliendo: "+direccion);
     }
 
     public void avanzar(Direcciones hacia, Direcciones orientacion) {
@@ -532,6 +622,92 @@ public class AgenteMain extends Agent {
                             break;
                         case ABAJO:
                             Moverse("adelante");
+                            break;
+                    }
+                    break;
+            }
+        }
+    }
+    public void decifrar(Direcciones hacia, Direcciones orientacion) {
+        if (hacia != null) {
+            switch (orientacion) {
+                case ARRIBA:
+                    switch (hacia) {
+                        case ARRIBA:
+                            Moverse2("f");
+                            break;
+                        case IZQUIERDA:
+                            Moverse2("i");
+                            Moverse2("f");
+                            break;
+                        case DERECHA:
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                        case ABAJO:
+                            Moverse2("d");
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                    }
+                    break;
+                case IZQUIERDA:
+                    switch (hacia) {
+                        case ARRIBA:
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                        case IZQUIERDA:
+                            Moverse2("f");
+                            break;
+                        case DERECHA:
+                            Moverse2("d");
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                        case ABAJO:
+                            Moverse2("i");
+                            Moverse2("f");
+                            break;
+                    }
+                    break;
+                case DERECHA:
+                    switch (hacia) {
+                        case ARRIBA:
+                            Moverse2("i");
+                            Moverse2("f");
+                            break;
+                        case IZQUIERDA:
+                            Moverse2("d");
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                        case DERECHA:
+                            Moverse2("f");
+                            break;
+                        case ABAJO:
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                    }
+                    break;
+                case ABAJO:
+                    switch (hacia) {
+                        case ARRIBA:
+                            Moverse2("d");
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                        case IZQUIERDA:
+                            Moverse2("d");
+                            Moverse2("f");
+                            break;
+                        case DERECHA:
+                            Moverse2("i");
+                            Moverse2("f");
+                            break;
+                        case ABAJO:
+                            Moverse2("f");
                             break;
                     }
                     break;

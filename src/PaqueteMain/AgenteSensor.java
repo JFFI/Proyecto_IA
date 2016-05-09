@@ -174,7 +174,7 @@ public class AgenteSensor extends Agent {
                      retorno = Escenario.TOPE;
                      break;
                      case 43:
-                     retorno = Escenario.SALIDA;
+                     retorno = Escenario.PERDIDO;
                      break;
                      case 44:
                      retorno = Escenario.TOPE;
